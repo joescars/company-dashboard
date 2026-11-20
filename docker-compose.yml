@@ -1,0 +1,30 @@
+# Docker Compose for the Company Dashboard.
+#
+# The supported install pulls the published image; all configuration arrives
+# through the .env file (see .env.example). Nothing is baked into the image.
+#
+#   cp .env.example .env && $EDITOR .env
+#   docker compose up -d
+#
+name: company-dashboard
+
+services:
+  dashboard:
+    # Published multi-arch image (linux/amd64 + linux/arm64).
+    # Replace OWNER with the GitHub org/user that publishes the image.
+    image: ghcr.io/OWNER/company-dashboard:latest
+    env_file: .env
+    ports:
+      - "8080:8080"
+    volumes:
+      # SQLite cache — persists across container replacements.
+      - ./data:/app/data
+    restart: unless-stopped
+
+    # ---------------------------------------------------------------------
+    # Contributors: comment out `image:` above and uncomment this to build
+    # the image from the local checkout instead of pulling it.
+    # ---------------------------------------------------------------------
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
