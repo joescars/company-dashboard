@@ -1,0 +1,47 @@
+# Dependencies and build output — rebuilt inside the image.
+node_modules
+**/node_modules
+dist
+**/dist
+build
+**/build
+*.tsbuildinfo
+
+# Runtime data / caches — must never be baked into the image.
+data
+**/data
+*.sqlite
+*.sqlite-*
+.cache
+
+# Secrets and per-instance configuration — supplied via env vars at runtime.
+.env
+.env.*
+!.env.example
+config/company.json
+
+# VCS and CI metadata.
+.git
+.gitignore
+.github
+
+# Tests and test tooling — not needed to run the image.
+**/test
+**/tests
+**/*.test.js
+**/*.test.ts
+**/*.spec.js
+**/*.spec.ts
+
+# Local notes, planning docs and docs not needed at runtime.
+*.local.md
+PLAN.md
+notes
+docs
+
+# Editor / OS noise.
+.DS_Store
+.idea
+.vscode
+*.swp
+*.log

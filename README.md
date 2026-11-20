@@ -44,13 +44,13 @@ cp .env.example .env
 $EDITOR .env                 # set COMPANY_NAME and the sources you have
 chmod 600 .env
 
-# 2. Run the published image.
+# 2. Run the published image (replace OWNER with the publishing org/user).
 docker run -d --name company-dashboard \
   --env-file .env \
   -p 8080:8080 \
   -v company-dashboard-data:/app/data \
   --restart unless-stopped \
-  ghcr.io/joescars/company-dashboard:latest
+  ghcr.io/OWNER/company-dashboard:latest
 
 # 3. Open http://localhost:8080 and sign in with an address in ADMIN_EMAILS.
 ```
@@ -60,7 +60,7 @@ docker run -d --name company-dashboard \
 ```yaml
 services:
   dashboard:
-    image: ghcr.io/joescars/company-dashboard:latest
+    image: ghcr.io/OWNER/company-dashboard:latest
     env_file: .env
     ports: ["8080:8080"]
     volumes: ["dashboard-data:/app/data"]
