@@ -32,3 +32,5 @@ npm-debug.log*
 .idea/
 .vscode/
 *.swp
+# TypeScript build info
+*.tsbuildinfo
