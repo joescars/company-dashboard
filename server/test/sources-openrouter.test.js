@@ -332,7 +332,8 @@ test('GET a configured source returns the null snapshot shell before any fetch',
     assert.equal(body.source, 'openrouter');
     assert.equal(body.enabled, false);
     assert.equal(body.snapshot, null);
-    assert.equal(body.health, null);
+    assert.equal(body.health.ok, false);
+    assert.equal(body.health.lastSuccessAt, null);
   } finally {
     server.close();
   }

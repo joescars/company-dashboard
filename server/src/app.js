@@ -57,7 +57,8 @@ export function createApp({ config = loadConfig(), sessionStore, sessionSecret }
   // Operator-only. Write-only by design: reports set/not-set, never values.
   app.use('/api/admin', adminRouter());
 
-  // Source data: reads are auth-gated, refresh writes are auth + CSRF gated.
+  // Cached source data and on-demand refreshes. Reads and writes are both
+  // auth-guarded; the refresh POST also carries the CSRF token above.
   app.use('/api/sources', sourcesRouter(config));
 
   // SPA: serves the built bundle and falls back to index.html for client routes.
