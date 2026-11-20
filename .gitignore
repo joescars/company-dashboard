@@ -21,6 +21,7 @@ data/
 logs/
 
 # Node
+node_modules
 node_modules/
 dist/
 build/
