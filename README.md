@@ -97,6 +97,10 @@ filtered aggregates are shown.
 Source checkout and local build are supported for contributors; see `CONTRIBUTING.md`.
 End users should not need to build.
 
+**Releasing:** images are published by GitHub Actions — pushing a release tag builds
+multi-arch (linux/amd64 + linux/arm64) images and pushes them to GHCR. There is no
+local/manual image build in the release path.
+
 ## License
 
 See `LICENSE`.
