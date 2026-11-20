@@ -12,6 +12,9 @@ export function shellHandler(config) {
 
   return function shellMiddleware(req, res, next) {
     if (req.path.startsWith('/api/')) return next();
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next();
+    // A request for a real file that static did not find is a 404, not the SPA.
+    if (path.extname(req.path)) return next();
 
     if (fs.existsSync(indexFile)) {
       let html = fs.readFileSync(indexFile, 'utf8');

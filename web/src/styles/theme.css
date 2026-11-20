@@ -30,7 +30,9 @@
 [data-theme='light'] {
   color-scheme: light;
 
-  --md-primary: #0b57d0;
+  /* The one place an instance's accent color enters the theme. */
+  --md-accent: #0b57d0;
+  --md-primary: var(--md-accent);
   --md-on-primary: #ffffff;
   --md-primary-container: #d3e3fd;
   --md-on-primary-container: #041e49;
@@ -61,7 +63,8 @@
 [data-theme='dark'] {
   color-scheme: dark;
 
-  --md-primary: #a8c7fa;
+  --md-accent: #0b57d0;
+  --md-primary: color-mix(in srgb, var(--md-accent) 45%, #ffffff);
   --md-on-primary: #062e6f;
   --md-primary-container: #0842a0;
   --md-on-primary-container: #d3e3fd;

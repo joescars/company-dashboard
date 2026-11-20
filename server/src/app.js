@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import path from 'node:path';
 
 import express from 'express';
 import session from 'express-session';
@@ -56,7 +57,22 @@ export function createApp({ config = loadConfig(), sessionStore, sessionSecret }
   // Operator-only. Write-only by design: reports set/not-set, never values.
   app.use('/api/admin', adminRouter());
 
-  // SPA: serves the built bundle and falls back to index.html for client routes.
+  // Built assets must be served before the SPA fallback, otherwise every
+  // /assets/*.js request would return index.html and the app would never mount.
+  const distDir = path.resolve(process.cwd(), 'web/dist');
+  app.use(
+    express.static(distDir, {
+      index: false,
+      // Vite fingerprints asset filenames, so they can be cached hard.
+      setHeaders(res, filePath) {
+        if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+      },
+    }),
+  );
+
+  // SPA: serves the built index.html and falls back to it for client routes.
   app.use(shellHandler(config));
 
   return app;
