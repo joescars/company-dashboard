@@ -12,6 +12,7 @@ import { adminRouter } from './routes/admin.js';
 import { authRouter } from './routes/auth.js';
 import { configRouter } from './routes/config.js';
 import { healthRouter } from './routes/health.js';
+import { sourcesRouter } from './routes/sources.js';
 
 /**
  * Assemble middleware and routes. Kept as a factory so tests can build an
@@ -55,6 +56,10 @@ export function createApp({ config = loadConfig(), sessionStore, sessionSecret }
 
   // Operator-only. Write-only by design: reports set/not-set, never values.
   app.use('/api/admin', adminRouter());
+
+  // Cached source data and on-demand refreshes. Reads and writes are both
+  // auth-guarded; the refresh POST also carries the CSRF token above.
+  app.use('/api/sources', sourcesRouter(config));
 
   // SPA: serves the built bundle and falls back to index.html for client routes.
   app.use(shellHandler(config));
