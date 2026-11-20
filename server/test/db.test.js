@@ -65,13 +65,16 @@ test('migrations apply once and are idempotent', () => {
     const db = getDb({ dataDir: dir });
 
     const first = runMigrations(db);
-    assert.deepEqual(first, ['001_init.sql'], 'first run applies 001_init.sql');
+    assert.ok(first.includes('001_init.sql'), 'first run applies 001_init.sql');
+    assert.ok(first.length > 0, 'first run applies at least one migration');
 
     const second = runMigrations(db);
     assert.deepEqual(second, [], 'second run applies nothing');
 
     const recorded = db.prepare('SELECT name FROM schema_migrations ORDER BY name').all();
-    assert.deepEqual(recorded.map((r) => r.name), ['001_init.sql'], 'recorded exactly once');
+    const names = recorded.map((r) => r.name);
+    assert.deepEqual(names, first, 'every applied migration is recorded exactly once');
+    assert.equal(new Set(names).size, names.length, 'no duplicate migration rows');
 
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
@@ -80,6 +83,7 @@ test('migrations apply once and are idempotent', () => {
     assert.ok(tables.includes('snapshots'), 'snapshots table exists');
     assert.ok(tables.includes('source_state'), 'source_state table exists');
     assert.ok(tables.includes('schema_migrations'), 'schema_migrations table exists');
+    assert.ok(tables.includes('sessions'), 'sessions table exists');
   } finally {
     closeDb();
   }
