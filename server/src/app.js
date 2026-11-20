@@ -8,6 +8,7 @@ import { securityHeaders } from './lib/security.js';
 import { SqliteSessionStore } from './lib/session-store.js';
 import { shellHandler } from './lib/shell.js';
 import { csrfProtection } from './middleware/auth.js';
+import { adminRouter } from './routes/admin.js';
 import { authRouter } from './routes/auth.js';
 import { configRouter } from './routes/config.js';
 import { healthRouter } from './routes/health.js';
@@ -51,6 +52,9 @@ export function createApp({ config = loadConfig(), sessionStore, sessionSecret }
 
   // Any write must carry the session's CSRF token.
   app.use('/api', csrfProtection());
+
+  // Operator-only. Write-only by design: reports set/not-set, never values.
+  app.use('/api/admin', adminRouter());
 
   // SPA: serves the built bundle and falls back to index.html for client routes.
   app.use(shellHandler(config));
