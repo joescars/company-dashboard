@@ -1,0 +1,167 @@
+@import 'tailwindcss';
+
+/*
+ * Material 3 (Material You) design tokens.
+ *
+ * Role-based color only: components reference these variables, never raw hex.
+ * Light and dark are switched via [data-theme] on <html>. The accent color is
+ * injected at runtime from the instance configuration.
+ */
+
+@theme {
+  --font-sans: 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Roboto Mono', ui-monospace, monospace;
+
+  /* Shape */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+
+  /* Elevation */
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.30), 0 1px 3px 1px rgb(0 0 0 / 0.15);
+  --shadow-2: 0 1px 2px rgb(0 0 0 / 0.30), 0 2px 6px 2px rgb(0 0 0 / 0.15);
+  --shadow-3: 0 4px 8px 3px rgb(0 0 0 / 0.15), 0 1px 3px rgb(0 0 0 / 0.30);
+}
+
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+
+  --md-primary: #0b57d0;
+  --md-on-primary: #ffffff;
+  --md-primary-container: #d3e3fd;
+  --md-on-primary-container: #041e49;
+
+  --md-secondary: #5f6368;
+  --md-on-secondary: #ffffff;
+  --md-secondary-container: #e8eaed;
+  --md-on-secondary-container: #1f1f1f;
+
+  --md-surface: #ffffff;
+  --md-surface-dim: #f8f9fa;
+  --md-surface-container: #f0f4f9;
+  --md-surface-container-high: #e9eef6;
+  --md-on-surface: #1f1f1f;
+  --md-on-surface-variant: #444746;
+  --md-outline: #747775;
+  --md-outline-variant: #c4c7c5;
+
+  --md-success: #146c2e;
+  --md-success-container: #c4eed0;
+  --md-error: #b3261e;
+  --md-error-container: #f9dedc;
+
+  --md-inverse-surface: #303030;
+  --md-inverse-on-surface: #f2f2f2;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --md-primary: #a8c7fa;
+  --md-on-primary: #062e6f;
+  --md-primary-container: #0842a0;
+  --md-on-primary-container: #d3e3fd;
+
+  --md-secondary: #c4c7c5;
+  --md-on-secondary: #303030;
+  --md-secondary-container: #444746;
+  --md-on-secondary-container: #e3e3e3;
+
+  --md-surface: #131314;
+  --md-surface-dim: #0e0e0f;
+  --md-surface-container: #1e1f20;
+  --md-surface-container-high: #282a2c;
+  --md-on-surface: #e3e3e3;
+  --md-on-surface-variant: #c4c7c5;
+  --md-outline: #8e918f;
+  --md-outline-variant: #444746;
+
+  --md-success: #6dd58c;
+  --md-success-container: #0f5223;
+  --md-error: #f2b8b5;
+  --md-error-container: #8c1d18;
+
+  --md-inverse-surface: #e3e3e3;
+  --md-inverse-on-surface: #303030;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--md-surface-dim);
+  color: var(--md-on-surface);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Component primitives -------------------------------------------------- */
+
+.md-card {
+  background: var(--md-surface-container);
+  color: var(--md-on-surface);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  box-shadow: var(--shadow-1);
+}
+
+.md-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 0.625rem 1.5rem;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  transition: box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.md-button:hover {
+  box-shadow: var(--shadow-2);
+}
+
+.md-button:focus-visible {
+  outline: 3px solid var(--md-primary);
+  outline-offset: 2px;
+}
+
+.md-button[data-variant='tonal'] {
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+}
+
+/* State layer for list rows and navigation items. */
+.md-state-layer {
+  position: relative;
+}
+
+.md-state-layer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+
+.md-state-layer:hover::after {
+  opacity: 0.08;
+}
+
+.md-state-layer:active::after {
+  opacity: 0.12;
+}
