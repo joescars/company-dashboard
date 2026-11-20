@@ -71,7 +71,9 @@ volumes:
 
 ## Configuration
 
-All configuration is environment variables. `.env.example` documents every one.
+All configuration is environment variables. `.env.example` documents every one, and
+**[docs/CREDENTIALS.md](docs/CREDENTIALS.md)** is a step-by-step guide to obtaining each
+credential (where to click, what the IDs look like, and what permissions to grant).
 
 - **Company + branding:** `COMPANY_NAME`, `COMPANY_SITE_URL`, `COMPANY_LOGO_URL`,
   `COMPANY_THEME_ACCENT`.
@@ -81,6 +83,26 @@ All configuration is environment variables. `.env.example` documents every one.
   principal, OpenRouter keys, Simple Analytics key.
 - **Enable/disable a source:** leave its variables blank to hide it, or set
   `SOURCES_ENABLED` explicitly.
+
+### Which credentials do I need?
+
+| Source | Credentials required |
+|---|---|
+| Login (all setups) | Google OAuth client — `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_CALLBACK_URL`, `ADMIN_EMAILS` |
+| Search Console | Service account + `GSC_SITE_URL` |
+| Google Analytics 4 | Service account + `GA4_PROPERTY_ID` |
+| AdSense | Service account + `ADSENSE_ACCOUNT_ID` |
+| Simple Analytics | `SIMPLE_ANALYTICS_API_KEY` + `SIMPLE_ANALYTICS_SITE` |
+| Azure | Service principal + `AZURE_SUBSCRIPTION_ID` + `AZURE_RESOURCE_IDS` |
+| OpenRouter | `OPENROUTER_API_KEY` (management key optional) |
+
+Plus, always: `SESSION_SECRET` (generate with `openssl rand -hex 32`).
+
+Each credential is obtained differently and the details matter — a service account must be
+*granted access* per property, not just created. See
+**[docs/CREDENTIALS.md](docs/CREDENTIALS.md)** for the full walkthrough, and for the
+troubleshooting table covering the usual failures (redirect loops, `redirect_uri_mismatch`,
+a tile that stays empty because a role is missing).
 
 An optional `config/company.json` (mounted into the container) can be used instead of the
 company/ID env vars for advanced or version-controlled setups; see

@@ -214,7 +214,7 @@ export const ENV_GROUPS = [
     variables: [
       {
         name: 'SOURCES_ENABLED',
-        description: 'Optional explicit source toggles. Comma-separated, e.g. azure,gsc,ga4. Default: enabled when credentials are present.',
+        description: 'Optional explicit source toggles. Comma-separated, e.g. azure,searchConsole,ga4. Default: enabled when credentials are present.',
         live: false,
       },
       {
