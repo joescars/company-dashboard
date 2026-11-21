@@ -1,79 +1,331 @@
-import type { PublicConfig, SourceKey } from '../lib/api.js';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-const SOURCE_LABELS: Record<SourceKey, { title: string; blurb: string }> = {
-  azure: { title: 'Azure', blurb: 'Cost Management and Monitor spend.' },
-  openrouter: { title: 'OpenRouter', blurb: 'Per-key usage and balance.' },
-  searchConsole: { title: 'Search Console', blurb: 'Search positions and impressions.' },
-  ga4: { title: 'Google Analytics', blurb: 'Sessions, users and page views.' },
-  adsense: { title: 'AdSense', blurb: 'Ad revenue and RPM.' },
-  simpleAnalytics: { title: 'Simple Analytics', blurb: 'Privacy-friendly traffic totals.' },
-};
+import {
+  type AdSensePayload,
+  type AzurePayload,
+  type Ga4Payload,
+  type OpenRouterPayload,
+  type PublicConfig,
+  type SearchConsolePayload,
+  type SimpleAnalyticsPayload,
+  type SourceEnvelope,
+  type SourceKey,
+  fetchSource,
+  refreshSource,
+} from '../lib/api.js';
+import { dateTime, relativeTime } from '../lib/format.js';
+import { SourceCard, type CardStatus } from '../components/SourceCard.js';
+import {
+  AdSensePanel,
+  AzurePanel,
+  Ga4Panel,
+  OpenRouterPanel,
+  SearchConsolePanel,
+  SimpleAnalyticsPanel,
+} from '../components/SourcePanels.js';
 
 /**
- * Overview page. Tiles are driven by the enabled sources in configuration;
- * a source without credentials is not rendered at all, so a half-configured
- * instance never shows a broken tile.
+ * The overview page.
+ *
+ * Rules this page follows:
+ * - A source that is not configured is *not shown*. The dashboard is a summary,
+ *   not a configuration checklist.
+ * - A source that is configured but has never been fetched shows "Not fetched"
+ *   with a Refresh action — never a fake zero.
+ * - A partially-failed fetch shows the sections that worked and names the ones
+ *   that didn't. One broken API must not blank the whole tile.
  */
-export function Dashboard({ config }: { config: PublicConfig }) {
-  const enabled = (Object.keys(config.sources) as SourceKey[]).filter(
-    (key) => config.sources[key].enabled,
+
+type SourceState = {
+  status: 'loading' | 'ready' | 'unavailable';
+  envelope?: SourceEnvelope<unknown>;
+  refreshing?: boolean;
+  error?: string;
+};
+
+const SOURCE_ORDER: { key: SourceKey; title: string }[] = [
+  { key: 'ga4', title: 'Site traffic' },
+  { key: 'searchConsole', title: 'Search performance' },
+  { key: 'adsense', title: 'Ad revenue' },
+  { key: 'azure', title: 'AI spend (Azure)' },
+  { key: 'openrouter', title: 'AI spend (OpenRouter)' },
+  { key: 'simpleAnalytics', title: 'Simple Analytics' },
+];
+
+export function Dashboard({ config, csrfToken }: { config: PublicConfig; csrfToken: string }) {
+  const [states, setStates] = useState<Record<string, SourceState>>({});
+  const [refreshingAll, setRefreshingAll] = useState(false);
+  const mounted = useRef(true);
+
+  const enabledSources = useMemo(
+    () => SOURCE_ORDER.filter((source) => config.sources?.[source.key]?.enabled),
+    [config],
   );
 
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  // Initial read is local-only: it returns the most recent stored snapshot and
+  // never calls a provider, so opening the page costs nothing upstream.
+  useEffect(() => {
+    if (enabledSources.length === 0) return;
+    let cancelled = false;
+
+    for (const { key } of enabledSources) {
+      setStates((previous) => ({ ...previous, [key]: { status: 'loading' } }));
+      fetchSource(key)
+        .then((envelope) => {
+          if (cancelled) return;
+          setStates((previous) => ({
+            ...previous,
+            [key]: { status: 'ready', envelope: envelope as SourceEnvelope<unknown> },
+          }));
+        })
+        .catch((error: Error) => {
+          if (cancelled) return;
+          setStates((previous) => ({
+            ...previous,
+            [key]: { status: 'unavailable', error: error.message },
+          }));
+        });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabledSources.map((source) => source.key).join(',')]);
+
+  const refreshOne = useCallback(
+    async (key: SourceKey) => {
+      setStates((previous) => ({
+        ...previous,
+        [key]: { ...(previous[key] ?? { status: 'ready' }), refreshing: true, error: undefined },
+      }));
+      try {
+        const result = await refreshSource(key, csrfToken);
+        if (!mounted.current) return;
+        setStates((previous) => ({
+          ...previous,
+          [key]: {
+            status: 'ready',
+            refreshing: false,
+            envelope: {
+              source: key,
+              enabled: true,
+              health: result.health,
+              snapshot:
+                result.data && result.fetchedAt
+                  ? { id: result.snapshotId ?? 0, fetchedAt: result.fetchedAt, payload: result.data }
+                  : null,
+              data: result.data,
+              fetchedAt: result.fetchedAt,
+            } as SourceEnvelope<unknown>,
+          },
+        }));
+      } catch (error) {
+        if (!mounted.current) return;
+        setStates((previous) => ({
+          ...previous,
+          [key]: {
+            ...(previous[key] ?? { status: 'ready' }),
+            refreshing: false,
+            error: (error as Error).message,
+          },
+        }));
+      }
+    },
+    [csrfToken],
+  );
+
+  const refreshAll = useCallback(async () => {
+    setRefreshingAll(true);
+    try {
+      // Sequential on purpose: these are rate-limited third-party APIs, and a
+      // burst of parallel calls is the fastest way to get throttled.
+      for (const { key } of enabledSources) {
+        await refreshOne(key);
+      }
+    } finally {
+      if (mounted.current) setRefreshingAll(false);
+    }
+  }, [enabledSources, refreshOne]);
+
+  const newestFetch = useMemo(() => {
+    const stamps = Object.values(states)
+      .map((state) => state.envelope?.fetchedAt)
+      .filter((value): value is string => Boolean(value));
+    if (stamps.length === 0) return null;
+    return stamps.sort().at(-1) ?? null;
+  }, [states]);
+
   return (
-    <div style={{ padding: '1.5rem', display: 'grid', gap: '1rem', maxWidth: 1100 }}>
-      <header>
-        <h1 style={{ margin: '0 0 0.25rem', fontSize: '1.75rem', fontWeight: 500 }}>
-          {config.companyName}
-        </h1>
-        <p style={{ margin: 0, color: 'var(--md-on-surface-variant)' }}>
-          {config.siteUrl ?? 'No site URL configured'}
-        </p>
+    <div className="dashboard">
+      <header className="dashboard__head">
+        <div>
+          <h1 className="dashboard__title">{config.companyName}</h1>
+          <p className="dashboard__subtitle">
+            {newestFetch
+              ? `Most recent data ${relativeTime(newestFetch)}`
+              : 'No data fetched yet'}
+            {config.siteUrl ? ` · ${hostOf(config.siteUrl)}` : ''}
+          </p>
+        </div>
+        {enabledSources.length > 0 ? (
+          <button
+            type="button"
+            className="md-button md-button--filled"
+            onClick={refreshAll}
+            disabled={refreshingAll}
+          >
+            {refreshingAll ? 'Refreshing…' : 'Refresh all'}
+          </button>
+        ) : null}
       </header>
 
-      {enabled.length === 0 ? (
-        <div className="md-card">
-          <h2 style={{ marginTop: 0, fontSize: '1.125rem' }}>No sources configured yet</h2>
-          <p style={{ margin: 0, color: 'var(--md-on-surface-variant)' }}>
-            Add credentials for at least one source in the environment, then restart. Enabled
-            sources appear here as live tiles.
+      {enabledSources.length === 0 ? (
+        <div className="md-card dashboard__empty">
+          <h2 style={{ marginTop: 0 }}>No data sources configured</h2>
+          <p style={{ color: 'var(--md-on-surface-variant)' }}>
+            This dashboard stays empty until at least one source has credentials. See{' '}
+            <code>docs/CREDENTIALS.md</code> for how to obtain each one, then set them in{' '}
+            <code>.env</code> and restart.
           </p>
         </div>
       ) : (
-        <div
-          style={{
-            display: 'grid',
-            gap: '1rem',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
-          }}
-        >
-          {enabled.map((key) => {
-            const label = SOURCE_LABELS[key];
+        <div className="dashboard__grid">
+          {enabledSources.map(({ key, title }) => {
+            const state = states[key];
             return (
-              <section key={key} className="md-card" aria-label={label.title}>
-                <h2 style={{ margin: '0 0 0.25rem', fontSize: '1rem', fontWeight: 500 }}>
-                  {label.title}
-                </h2>
-                <p style={{ margin: '0 0 0.75rem', color: 'var(--md-on-surface-variant)' }}>
-                  {label.blurb}
-                </p>
-                <span
-                  style={{
-                    display: 'inline-block',
-                    borderRadius: 'var(--radius-full)',
-                    background: 'var(--md-primary-container)',
-                    color: 'var(--md-on-primary-container)',
-                    padding: '0.125rem 0.75rem',
-                    fontSize: '0.8125rem',
-                    fontWeight: 500,
-                  }}
-                >
-                  Connected
-                </span>
-              </section>
+              <SourceCard
+                key={key}
+                title={title}
+                status={cardStatus(state)}
+                fetchedAt={state?.envelope?.fetchedAt ?? null}
+                error={state?.error ?? stateError(state)}
+                refreshing={state?.refreshing ?? false}
+                onRefresh={() => void refreshOne(key)}
+                subtitle={periodFor(state?.envelope?.data) ?? subtitleFor(key)}
+              >
+                {renderPanel(key, state?.envelope?.data)}
+              </SourceCard>
             );
           })}
         </div>
       )}
+
+      <footer className="dashboard__footer">
+        <span>
+          Data is read from the local cache; “Refresh” re-fetches from each provider.
+        </span>
+        {newestFetch ? <span title={newestFetch}>Last updated {dateTime(newestFetch)}</span> : null}
+      </footer>
     </div>
   );
+}
+
+/* ------------------------------------------------------------------ */
+
+function cardStatus(state: SourceState | undefined): CardStatus {
+  if (!state) return 'loading';
+  if (state.status === 'loading') return 'loading';
+  if (state.status === 'unavailable') return 'error';
+  if (state.refreshing) return 'loading';
+  const health = state.envelope?.health;
+  if (health && health.ok === false && health.lastError) return 'error';
+  if (!state.envelope?.data) return 'idle';
+  return payloadIsPartial(state.envelope.data) ? 'partial' : 'ok';
+}
+
+/** A payload is partial when any section failed, even if the envelope is ok. */
+function payloadIsPartial(payload: unknown): boolean {
+  if (!payload || typeof payload !== 'object') return false;
+  const record = payload as {
+    ok?: boolean;
+    errors?: unknown;
+    sections?: Record<string, { ok?: boolean } | undefined>;
+  };
+  if (record.ok === false) return true;
+  if (record.errors && Object.keys(record.errors).length > 0) return true;
+  return Object.values(record.sections ?? {}).some((section) => section?.ok === false);
+}
+
+function stateError(state: SourceState | undefined): string | null {
+  if (!state?.envelope) return null;
+  const health = state.envelope.health;
+  if (health.lastError) return health.lastError;
+  const payload = state.envelope.data as { errors?: Record<string, string> } | null;
+  const messages = payload?.errors ? Object.values(payload.errors) : [];
+  return messages.length > 0 ? messages.join(' · ') : null;
+}
+
+function periodFor(payload: unknown): string | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const period = (payload as { period?: { startDate?: string; endDate?: string } }).period;
+  if (!period?.startDate && !period?.endDate) return null;
+  const start = period.startDate ? shortDate(period.startDate) : null;
+  const end = period.endDate ? shortDate(period.endDate) : null;
+  if (start && end) return `${start} – ${end}`;
+  return start ?? end;
+}
+
+function shortDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function subtitleFor(key: SourceKey): string {
+  switch (key) {
+    case 'ga4':
+      return 'Last 28 days · Google Analytics 4';
+    case 'searchConsole':
+      return 'Last 28 days · Search Console';
+    case 'adsense':
+      return 'Last 30 days · AdSense';
+    case 'azure':
+      return 'Azure Cost Management + Monitor';
+    case 'openrouter':
+      return 'OpenRouter credits and usage';
+    case 'simpleAnalytics':
+      return 'Simple Analytics';
+    default:
+      return '';
+  }
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Payloads are fetched with a known source key, so the cast is a narrowing, not
+ * a guess: the server contract per key is asserted by server/test/sources-*.js.
+ */
+function renderPanel(key: SourceKey, payload: unknown) {
+  if (!payload) return null;
+  switch (key) {
+    case 'ga4':
+      return <Ga4Panel payload={payload as Ga4Payload} />;
+    case 'adsense':
+      return <AdSensePanel payload={payload as AdSensePayload} />;
+    case 'searchConsole':
+      return <SearchConsolePanel payload={payload as SearchConsolePayload} />;
+    case 'azure':
+      return <AzurePanel payload={payload as AzurePayload} />;
+    case 'openrouter':
+      return <OpenRouterPanel payload={payload as OpenRouterPayload} />;
+    case 'simpleAnalytics':
+      return <SimpleAnalyticsPanel payload={payload as SimpleAnalyticsPayload} />;
+    default:
+      return null;
+  }
 }

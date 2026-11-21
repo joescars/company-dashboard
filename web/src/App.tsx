@@ -89,7 +89,7 @@ export function App() {
 
   return (
     <AppShell {...shellProps}>
-      <Dashboard config={config} />
+      <Dashboard config={config} csrfToken={auth.csrfToken} />
     </AppShell>
   );
 }

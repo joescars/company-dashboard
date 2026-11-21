@@ -57,9 +57,11 @@ export function AppShell({
   return (
     <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
       <header
+        className="app-header"
         style={{
           display: 'flex',
           alignItems: 'center',
+          flexWrap: 'wrap',
           gap: '1rem',
           padding: '0.75rem 1.5rem',
           background: 'var(--md-surface)',
@@ -85,7 +87,10 @@ export function AppShell({
           </nav>
         ) : null}
 
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div
+          className="app-header__actions"
+          style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}
+        >
           {onToggleTheme ? (
             <button
               type="button"
@@ -111,6 +116,7 @@ export function AppShell({
           {signedIn && auth?.user ? (
             <>
               <span
+                className="app-header__user"
                 style={{
                   fontSize: '0.875rem',
                   color: 'var(--md-on-surface-variant)',
