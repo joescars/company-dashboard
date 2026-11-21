@@ -275,7 +275,7 @@ test('periodFor returns an inclusive window of the requested length', () => {
   assert.equal(period.startDate, '2026-11-01');
 });
 
-test('simpleAnalyticsConfigFromApp prefers the environment, then the config file', () => {
+test('simpleAnalyticsConfigFromApp prefers the environment, then the passed app config', () => {
   assert.deepEqual(
     simpleAnalyticsConfigFromApp(
       { sources: { simpleAnalytics: { config: { site: 'file.example' } } } },

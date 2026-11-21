@@ -256,7 +256,8 @@ export async function fetchGa4(config, { fetchImpl, now = () => new Date(), ...r
 
 /**
  * Adapt a loaded app config into the flat shape the fetcher expects.
- * Identifiers may come from the environment or the config file.
+ * Identifiers come from the environment; the app config is a fallback for
+ * callers that pass one in explicitly.
  */
 export function ga4ConfigFromApp(appConfig, env = process.env) {
   return {

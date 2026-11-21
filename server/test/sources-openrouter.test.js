@@ -226,7 +226,7 @@ function configWithEnv(envVars = {}) {
     if (v === undefined) delete process.env[k];
     else process.env[k] = v;
   }
-  const config = loadConfig({ configPath: '/nonexistent/company.json' });
+  const config = loadConfig();
   for (const [k, v] of Object.entries(saved)) {
     if (v === undefined) delete process.env[k];
     else process.env[k] = v;
@@ -352,7 +352,7 @@ test('POST refresh on an enabled-but-failing source records the failure and 502s
     json: async () => ({ error: { message: 'invalid key' } }),
   });
 
-  const config = loadConfig({ configPath: '/nonexistent/company.json' });
+  const config = loadConfig();
   assert.equal(config.sources.openrouter.enabled, true, 'precondition: source is enabled');
 
   const app = signedInSourcesApp(config, { fetchImpl: failingFetch });
@@ -395,7 +395,7 @@ test('POST refresh on a working source persists a snapshot that GET reads back',
     }),
   });
 
-  const config = loadConfig({ configPath: '/nonexistent/company.json' });
+  const config = loadConfig();
   const app = signedInSourcesApp(config, { fetchImpl: okFetch });
   const { server, base } = await listen(app);
   try {

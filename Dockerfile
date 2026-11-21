@@ -48,7 +48,6 @@ RUN npm ci --omit=dev --workspace server --include-workspace-root && npm cache c
 
 # Application code and built assets from the builder stage.
 COPY server ./server
-COPY config ./config
 COPY --from=builder /app/web/dist ./web/dist
 
 # Writable data dir for the SQLite cache, owned by the non-root runtime user.

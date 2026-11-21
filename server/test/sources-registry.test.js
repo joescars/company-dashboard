@@ -40,7 +40,7 @@ function configWithEnv(envVars = {}) {
     if (v === undefined) delete process.env[k];
     else process.env[k] = v;
   }
-  const config = loadConfig({ configPath: '/nonexistent/company.json' });
+  const config = loadConfig();
   for (const [k, v] of Object.entries(saved)) {
     if (v === undefined) delete process.env[k];
     else process.env[k] = v;

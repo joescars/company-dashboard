@@ -1,37 +1,17 @@
-import fs from 'node:fs';
-import path from 'node:path';
-
 /**
  * Resolve all instance configuration.
  *
- * Precedence (highest first):
+ * Configuration is environment variables only — there is no config file to
+ * mount. Precedence (highest first):
  *   1. environment variables
- *   2. config/company.json (optional mounted override)
- *   3. built-in defaults
+ *   2. built-in defaults
  *
  * No company-specific value is ever baked into the image; a deployment with
  * nothing set still boots with generic defaults.
  */
 
-const DEFAULT_CONFIG_PATH = path.resolve(process.cwd(), 'config/company.json');
-
 /** Source keys used throughout the app. */
 export const SOURCES = ['azure', 'openrouter', 'searchConsole', 'ga4', 'adsense', 'simpleAnalytics'];
-
-function readConfigFile(filePath) {
-  try {
-    if (!filePath || !fs.existsSync(filePath)) return {};
-    const raw = fs.readFileSync(filePath, 'utf8');
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch (error) {
-    // A malformed optional override must not take the app down, but the
-    // operator needs to know it was ignored.
-    // eslint-disable-next-line no-console
-    console.warn(`[config] ignoring ${filePath}: ${error.message}`);
-    return {};
-  }
-}
 
 /** Treat empty / whitespace-only env values as "unset". */
 function envStr(name) {
@@ -51,13 +31,12 @@ function envList(name) {
  * alone (or defaults) are not enough — a half-filled config must hide the tile
  * rather than render a broken one.
  */
-function resolveSources(fileSources = {}, env = {}) {
+function resolveSources(env = {}) {
   const explicit = env.SOURCES_ENABLED;
   const resolved = {};
 
   for (const key of SOURCES) {
-    const fileEntry = fileSources[key] || {};
-    const identifiers = idsFor(key, env, fileEntry);
+    const identifiers = idsFor(key, env);
     const hasCredentials = checkCredentials(key, env);
     const hasIdentifiers = hasRequiredIdentifiers(key, identifiers);
 
@@ -71,26 +50,26 @@ function resolveSources(fileSources = {}, env = {}) {
   return resolved;
 }
 
-function idsFor(key, env, fileEntry = {}) {
+function idsFor(key, env) {
   switch (key) {
     case 'azure':
       return {
-        subscriptionId: env.AZURE_SUBSCRIPTION_ID ?? fileEntry.subscriptionId ?? null,
-        resourceIds: envList('AZURE_RESOURCE_IDS') ?? fileEntry.resourceIds ?? [],
-        billingDayOfMonth: Number(env.AZURE_BILLING_DAY_OF_MONTH ?? fileEntry.billingDayOfMonth ?? 1),
+        subscriptionId: env.AZURE_SUBSCRIPTION_ID ?? null,
+        resourceIds: envList('AZURE_RESOURCE_IDS') ?? [],
+        billingDayOfMonth: Number(env.AZURE_BILLING_DAY_OF_MONTH ?? 1),
       };
     case 'openrouter':
       return {
         hasManagementKey: Boolean(env.OPENROUTER_MANAGEMENT_KEY),
       };
     case 'searchConsole':
-      return { siteUrl: env.GSC_SITE_URL ?? fileEntry.siteUrl ?? null };
+      return { siteUrl: env.GSC_SITE_URL ?? null };
     case 'ga4':
-      return { propertyId: env.GA4_PROPERTY_ID ?? fileEntry.propertyId ?? null };
+      return { propertyId: env.GA4_PROPERTY_ID ?? null };
     case 'adsense':
-      return { accountId: env.ADSENSE_ACCOUNT_ID ?? fileEntry.accountId ?? null };
+      return { accountId: env.ADSENSE_ACCOUNT_ID ?? null };
     case 'simpleAnalytics':
-      return { site: env.SIMPLE_ANALYTICS_SITE ?? fileEntry.site ?? null };
+      return { site: env.SIMPLE_ANALYTICS_SITE ?? null };
     default:
       return {};
   }
@@ -134,10 +113,7 @@ function hasRequiredIdentifiers(key, identifiers) {
   }
 }
 
-export function loadConfig({ configPath } = {}) {
-  const filePath = configPath || envStr('COMPANY_CONFIG_PATH') || DEFAULT_CONFIG_PATH;
-  const file = readConfigFile(filePath);
-
+export function loadConfig() {
   const env = {
     COMPANY_NAME: envStr('COMPANY_NAME'),
     COMPANY_SITE_URL: envStr('COMPANY_SITE_URL'),
@@ -161,13 +137,13 @@ export function loadConfig({ configPath } = {}) {
   };
 
   return {
-    companyName: env.COMPANY_NAME ?? file.companyName ?? 'Company Dashboard',
-    siteUrl: env.COMPANY_SITE_URL ?? file.siteUrl ?? null,
-    logoUrl: env.COMPANY_LOGO_URL ?? file.logoUrl ?? null,
+    companyName: env.COMPANY_NAME ?? 'Company Dashboard',
+    siteUrl: env.COMPANY_SITE_URL ?? null,
+    logoUrl: env.COMPANY_LOGO_URL ?? null,
     theme: {
-      accent: env.COMPANY_THEME_ACCENT ?? file.theme?.accent ?? '#0b57d0',
+      accent: env.COMPANY_THEME_ACCENT ?? '#0b57d0',
     },
-    sources: resolveSources(file.sources, env),
+    sources: resolveSources(env),
   };
 }
 

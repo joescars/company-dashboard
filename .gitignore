@@ -3,9 +3,6 @@
 .env.*
 !.env.example
 
-# Per-instance company configuration (real names/IDs); the template is committed
-config/company.json
-
 # Local working notes and internal planning — not for publication
 PLAN.md
 notes/

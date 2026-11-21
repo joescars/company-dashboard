@@ -18,7 +18,6 @@ data
 .env
 .env.*
 !.env.example
-config/company.json
 
 # VCS and CI metadata.
 .git

@@ -25,8 +25,7 @@ the others are simply not shown. A company that runs no ads has no AdSense tile.
 ## Design goals
 
 - **Configurable, not forked.** Company name, branding, and all per-source IDs come from
-  environment variables (an optional config file is supported for advanced setups).
-  Nothing company-specific is hardcoded into the image.
+  environment variables. Nothing company-specific is hardcoded into the image.
 - **Deploy by pulling an image.** The supported install is: pull → configure `.env` → run.
 - **One page, many sources, degrade per tile.** The overview fans out to every enabled
   source in parallel; one failing API never blanks the dashboard.
@@ -103,10 +102,6 @@ Each credential is obtained differently and the details matter — a service acc
 **[docs/CREDENTIALS.md](docs/CREDENTIALS.md)** for the full walkthrough, and for the
 troubleshooting table covering the usual failures (redirect loops, `redirect_uri_mismatch`,
 a tile that stays empty because a role is missing).
-
-An optional `config/company.json` (mounted into the container) can be used instead of the
-company/ID env vars for advanced or version-controlled setups; see
-`config/company.example.json`. Env vars take precedence when both are present.
 
 ## Privacy
 

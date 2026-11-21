@@ -333,7 +333,7 @@ test('normalizePropertyId / isNumericPropertyId', () => {
   assert.equal(isNumericPropertyId('G-ABC'), false);
 });
 
-test('ga4ConfigFromApp prefers the environment, then the config file', () => {
+test('ga4ConfigFromApp prefers the environment, then the passed app config', () => {
   assert.deepEqual(ga4ConfigFromApp({ sources: { ga4: { config: { propertyId: 'from-file' } } } }, {}), {
     propertyId: 'from-file',
   });

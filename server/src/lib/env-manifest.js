@@ -217,11 +217,6 @@ export const ENV_GROUPS = [
         description: 'Optional explicit source toggles. Comma-separated, e.g. azure,searchConsole,ga4. Default: enabled when credentials are present.',
         live: false,
       },
-      {
-        name: 'COMPANY_CONFIG_PATH',
-        description: 'Optional path to a config file mounted into the container. Env vars win when both are set.',
-        live: false,
-      },
     ],
   },
 ];

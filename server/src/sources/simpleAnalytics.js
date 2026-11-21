@@ -261,8 +261,8 @@ export async function fetchSimpleAnalytics(
 
 /**
  * Adapt a loaded app config into the flat shape the fetcher expects. The site
- * identifier may come from the environment or the config file; the API key is
- * read from the environment only.
+ * identifier and API key both come from the environment; the app config is a
+ * fallback for callers that pass one in explicitly.
  */
 export function simpleAnalyticsConfigFromApp(appConfig, env = process.env) {
   return {
