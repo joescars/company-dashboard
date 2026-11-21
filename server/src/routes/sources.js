@@ -2,9 +2,15 @@ import { Router } from 'express';
 
 import { getSourceState, latestSnapshot, recordSourceResult, saveSnapshot } from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { adsenseConfigFromApp, fetchAdSense } from '../sources/adsense.js';
 import { azureConfigFromApp, fetchAzure } from '../sources/azure.js';
+import { fetchGa4, ga4ConfigFromApp } from '../sources/ga4.js';
 import { fetchOpenRouter, openRouterConfigFromApp } from '../sources/openrouter.js';
 import { fetchSearchConsole } from '../sources/searchConsole.js';
+import {
+  fetchSimpleAnalytics,
+  simpleAnalyticsConfigFromApp,
+} from '../sources/simpleAnalytics.js';
 
 /**
  * Source data endpoints.
@@ -49,6 +55,24 @@ const SOURCES = {
     fetch: (fetcherConfig, { fetchImpl } = {}) =>
       fetchSearchConsole(fetcherConfig.siteUrl, { fetchImpl }),
     payloadOf: (result) => result.data ?? result,
+  },
+  ga4: {
+    label: 'Google Analytics 4',
+    isEnabled: (config) => Boolean(config?.sources?.ga4?.enabled),
+    buildFetcherConfig: (config, env) => ga4ConfigFromApp(config, env),
+    fetch: fetchGa4,
+  },
+  adsense: {
+    label: 'AdSense',
+    isEnabled: (config) => Boolean(config?.sources?.adsense?.enabled),
+    buildFetcherConfig: (config, env) => adsenseConfigFromApp(config, env),
+    fetch: fetchAdSense,
+  },
+  simpleAnalytics: {
+    label: 'Simple Analytics',
+    isEnabled: (config) => Boolean(config?.sources?.simpleAnalytics?.enabled),
+    buildFetcherConfig: (config, env) => simpleAnalyticsConfigFromApp(config, env),
+    fetch: fetchSimpleAnalytics,
   },
 };
 
