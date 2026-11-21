@@ -13,7 +13,15 @@ import {
   fetchSource,
   refreshSource,
 } from '../lib/api.js';
-import { dateTime, relativeTime } from '../lib/format.js';
+import {
+  count,
+  dateTime,
+  money,
+  num,
+  percentFromRatio,
+  position,
+  relativeTime,
+} from '../lib/format.js';
 import { SourceCard, type CardStatus } from '../components/SourceCard.js';
 import {
   AdSensePanel,
@@ -163,6 +171,8 @@ export function Dashboard({ config, csrfToken }: { config: PublicConfig; csrfTok
     return stamps.sort().at(-1) ?? null;
   }, [states]);
 
+  const summary = useMemo(() => buildSummary(states), [states]);
+
   return (
     <div className="dashboard">
       <header className="dashboard__head">
@@ -186,6 +196,18 @@ export function Dashboard({ config, csrfToken }: { config: PublicConfig; csrfTok
           </button>
         ) : null}
       </header>
+
+      {summary.length > 0 ? (
+        <section className="summary-strip" aria-label="Headline numbers">
+          {summary.map((item) => (
+            <div className="summary-strip__item" key={item.label}>
+              <span className="summary-strip__label">{item.label}</span>
+              <span className="summary-strip__value">{item.value}</span>
+              <span className="summary-strip__hint">{item.hint}</span>
+            </div>
+          ))}
+        </section>
+      ) : null}
 
       {enabledSources.length === 0 ? (
         <div className="md-card dashboard__empty">
@@ -226,6 +248,83 @@ export function Dashboard({ config, csrfToken }: { config: PublicConfig; csrfTok
       </footer>
     </div>
   );
+}
+
+/* ------------------------------ headline ------------------------------ */
+
+type SummaryItem = { label: string; value: string; hint: string };
+
+/**
+ * The strip above the tiles. Each entry comes from the payload that is already
+ * on the page — it never triggers a fetch, and a source that has no data is
+ * simply absent rather than showing a zero that implies "no traffic".
+ */
+function buildSummary(states: Record<string, SourceState>): SummaryItem[] {
+  const items: SummaryItem[] = [];
+
+  const ga4 = states.ga4?.envelope?.data as Ga4Payload | null | undefined;
+  const sa = states.simpleAnalytics?.envelope?.data as SimpleAnalyticsPayload | null | undefined;
+  if (ga4?.sections?.totals?.ok) {
+    items.push({
+      label: 'Sessions',
+      value: count(ga4.sections.totals.sessions),
+      hint: ga4.period ? periodSpan(ga4.period) : 'Google Analytics 4',
+    });
+  } else if (sa?.sections?.summary?.ok) {
+    items.push({
+      label: 'Visitors',
+      value: count(sa.sections.summary.visitors),
+      hint: sa.period ? periodSpan(sa.period) : 'Simple Analytics',
+    });
+  }
+
+  const gsc = states.searchConsole?.envelope?.data as SearchConsolePayload | null | undefined;
+  if (gsc?.totals) {
+    items.push({
+      label: 'Search clicks',
+      value: count(gsc.totals.clicks),
+      hint: `CTR ${percentFromRatio(gsc.totals.ctr)} · position ${position(gsc.totals.position)}`,
+    });
+  }
+
+  const ads = states.adsense?.envelope?.data as AdSensePayload | null | undefined;
+  const adsSummary = ads?.sections?.summary;
+  if (adsSummary?.ok && adsSummary.estimatedEarnings !== undefined) {
+    items.push({
+      label: 'Ad revenue',
+      value: money(adsSummary.estimatedEarnings, adsSummary.currency),
+      hint: adsSummary.rpm === undefined ? 'Estimated earnings' : `RPM ${money(adsSummary.rpm, adsSummary.currency)}`,
+    });
+  }
+
+  const azure = states.azure?.envelope?.data as AzurePayload | null | undefined;
+  const azureCost = azure?.sections?.cost;
+  const or = states.openrouter?.envelope?.data as OpenRouterPayload | null | undefined;
+  const orKey = or?.sections?.key;
+  const azureTotal = azureCost?.ok ? num(azureCost.total) : null;
+  const orTotal = orKey?.ok ? num(orKey.usage) : null;
+  if (azureTotal !== null || orTotal !== null) {
+    const total = (azureTotal ?? 0) + (orTotal ?? 0);
+    const parts = [
+      azureTotal !== null ? 'Azure' : null,
+      orTotal !== null ? 'OpenRouter' : null,
+    ].filter(Boolean);
+    const currency = azureCost?.ok ? azureCost.currency : null;
+    items.push({
+      label: 'AI spend',
+      value: money(total, currency ?? 'USD'),
+      hint: parts.join(' + '),
+    });
+  }
+
+  return items;
+}
+
+function periodSpan(period: { startDate?: string | null; endDate?: string | null }): string {
+  const start = period.startDate ? shortDate(period.startDate) : null;
+  const end = period.endDate ? shortDate(period.endDate) : null;
+  if (start && end) return `${start} – ${end}`;
+  return start ?? end ?? '';
 }
 
 /* ------------------------------------------------------------------ */
